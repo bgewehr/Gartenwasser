@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 __author__ = "Bernd Gewehr"
 
@@ -20,7 +20,42 @@ MQTT_TOPIC_IN = "/Gartenwasser/#"
 MQTT_TOPIC = "/Gartenwasser"
 MQTT_QOS = 0
 
-VALVE_STATE = [0, 0, 0, 0, 0]
+# The VALVE_STATE stores the current states of all valves, 
+# the flow and the consumption
+# It has five datasets because our keypad has five switches, makes it easier to code
+VALVE_STATE = [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0]]
+UNIT = ['', 'l/h', 'l ']
+SWITCHPOS = ['off ', 'on ']
+
+#The DISPLAYTYPE Variable is modified by the 5th button of the keypad
+#It decides which data to show: state, flow, consumption60min
+DISPLAYTYPE = 0
+
+def output():
+    if DISPLAYTYPE == 0:
+        state1 = SWITCHPOS[VALVE_STATE[0][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
+    else:
+        state1 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+    state1 = state1.rjust(6)
+    if DISPLAYTYPE == 0:
+        state2 = SWITCHPOS[VALVE_STATE[1][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
+    else:
+        state2 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+    state2 = state2.rjust(6)
+    if DISPLAYTYPE == 0:
+        state3 = SWITCHPOS[VALVE_STATE[2][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
+    else:
+        state3 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+    state3 = state3.rjust(6)
+    if DISPLAYTYPE == 0:
+        state4 = SWITCHPOS[VALVE_STATE[3][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
+    else:
+        state4 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+    state4 = state4.rjust(6)
+    Message = '1:' + state1 + '2:' + state2 + '\n3:' + state3 + '4:' + state4
+    lcd.clear()
+    lcd.message(Message)
+ 
 
 def on_message(mosq, obj, msg):
     """
@@ -40,18 +75,35 @@ def on_message(mosq, obj, msg):
 
     if topicparts[2] == "in":
         if pin == 29:
-            VALVE_STATE[0] = value
+            VALVE_STATE[0][0] = value
         if pin == 31:
-            VALVE_STATE[1] = value
+            VALVE_STATE[1][0] = value
         if pin == 33:
-            VALVE_STATE[2] = value
+            VALVE_STATE[2][0] = value
         if pin == 35:
-            VALVE_STATE[3] = value
+            VALVE_STATE[3][0] = value
 
-    Message = 'V1: ' + str(VALVE_STATE[0]) + ' V2: ' + str(VALVE_STATE[1]) + '\nV3: ' + str(VALVE_STATE[2]) + ' V4: ' + str(VALVE_STATE[3])
-    lcd.clear()
-    lcd.message(Message)
+    if topicparts[2] == "flow":
+        if pin == 29:
+            VALVE_STATE[0][1] = value
+        if pin == 31:
+            VALVE_STATE[1][1] = value
+        if pin == 33:
+            VALVE_STATE[2][1] = value
+        if pin == 35:
+            VALVE_STATE[3][1] = value
 
+    if topicparts[2] == "consumption":
+        if pin == 29:
+            VALVE_STATE[0][2] = value
+        if pin == 31:
+            VALVE_STATE[1][2] = value
+        if pin == 33:
+            VALVE_STATE[2][2] = value
+        if pin == 35:
+            VALVE_STATE[3][2] = value
+
+    output()
 
 # End of MQTT callbacks
 
@@ -73,14 +125,26 @@ def loop():
     """
     The main loop in which we mow the lawn.
     """
+    global DISPLAYTYPE
     while True:
         time.sleep(0.08)
         buttonState = lcd.buttons()
         for b in btn:
             if (buttonState & (1 << b[0])) != 0:
                 if DEBUG: print 'Button pressed for GPIO ' + str(b[1])
-                if b[1] > 0: MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]]-1), qos=0, retain=True)
+                if b[1] > 0: 
+                    MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1), qos=0, retain=True)
+                else:
+                    DISPLAYTYPE = DISPLAYTYPE + 1
+                    if DISPLAYTYPE == 3: DISPLAYTYPE = 0
+                    lcd.clear()
+                    if DISPLAYTYPE == 0: lcd.message("Display\nstate")
+                    if DISPLAYTYPE == 1: lcd.message("Display\nflow")
+                    if DISPLAYTYPE == 2: lcd.message("Display\nconsumption")
+                    time.sleep(1)
+                    output()
                 time.sleep(.5)
+                if DEBUG: print DISPLAYTYPE
                 break
 
 
@@ -101,9 +165,7 @@ MQTT.mqttc.subscribe(MQTT_TOPIC_IN, qos=MQTT_QOS)
 lcd.clear()
 lcd.message("Gartenwasser\nstartet...")
 time.sleep(1)
-Message = 'V1: ' + str(VALVE_STATE[0]) + ' V2: ' + str(VALVE_STATE[1]) + '\nV3: ' + str(VALVE_STATE[2]) + ' V4: ' + str(VALVE_STATE[3])
-lcd.clear()
-lcd.message(Message)
+output()
 
 # Cycle through backlight colors
 #col = (lcd.RED, lcd.YELLOW, lcd.GREEN, lcd.TEAL,
