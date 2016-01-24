@@ -13,8 +13,8 @@ from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
 sys.sterr = sys.stdout
 
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 MQTT_TOPIC_IN = "/Gartenwasser/#"
 MQTT_TOPIC = "/Gartenwasser"
@@ -40,17 +40,17 @@ def output():
     if DISPLAYTYPE == 0:
         state2 = SWITCHPOS[VALVE_STATE[1][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
     else:
-        state2 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+        state2 = str(VALVE_STATE[1][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
     state2 = state2.rjust(6)
     if DISPLAYTYPE == 0:
         state3 = SWITCHPOS[VALVE_STATE[2][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
     else:
-        state3 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+        state3 = str(VALVE_STATE[2][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
     state3 = state3.rjust(6)
     if DISPLAYTYPE == 0:
         state4 = SWITCHPOS[VALVE_STATE[3][DISPLAYTYPE]] + UNIT[DISPLAYTYPE]
     else:
-        state4 = str(VALVE_STATE[0][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
+        state4 = str(VALVE_STATE[3][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
     state4 = state4.rjust(6)
     Message = '1:' + state1 + '2:' + state2 + '\n3:' + state3 + '4:' + state4
     lcd.clear()
