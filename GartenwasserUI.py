@@ -71,7 +71,11 @@ def on_message(mosq, obj, msg):
        print msg.payload
 	
     pin = int('0' + topicparts[len(topicparts) - 1])
-    value = int(msg.payload)
+
+    try:
+        value = int(float(msg.payload))
+    except ValueError:
+        value = 0
 
     if topicparts[2] == "in":
         if pin == 29:
