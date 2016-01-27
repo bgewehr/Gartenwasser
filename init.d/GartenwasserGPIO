@@ -2,7 +2,7 @@
 
 ### BEGIN INIT INFO
 # Provides:          GartenwasserGPIO
-# Required-Start:    $remote_fs $syslog $mosquitto
+# Required-Start:    $remote_fs $syslog mosquitto
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
@@ -11,7 +11,7 @@
 ### END INIT INFO
 
 # Change the next 3 lines to suit where you install your script and what you want to call it
-DIR=/usr/local/bin/Gartenwasser
+DIR=/home/pi/Gartenwasser
 DAEMON=$DIR/GartenwasserGPIO.py
 DAEMON_NAME=GartenwasserGPIO
 
@@ -30,8 +30,10 @@ PIDFILE=/var/run/$DAEMON_NAME.pid
 do_start () {
     log_daemon_msg "Starting system $DAEMON_NAME daemon"
     cd $DIR
-    #python ./$DAEMON_NAME.py &
-    start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --user $DAEMON_USER --chuid $DAEMON_USER --startas $DAEMON -- $DAEMON_OPTS
+    /usr/bin/python ./$DAEMON_NAME.py >> /var/log/$DAEMON_NAME.log 2>&1  &
+    echo $! > $PIDFILE
+    #start-stop-daemon --start --background --pidfile $PIDFILE --make-pidfile --user $DAEMON_USER --chuid $DAEMON_USER --startas $DAEMON -- $DAEMON_OPTS --verbose -stdout /var/log/GartenwasserGPIO.log
+
     log_end_msg $?
 }
 do_stop () {

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 __author__ = "Bernd Gewehr"
 
@@ -11,16 +11,16 @@ import RPi.GPIO as GPIO
 # import libraries
 import lib_mqtt as MQTT
 
-sys.sterr = sys.stdout
+DEBUG = False
+#DEBUG = True
 
-#DEBUG = False
-DEBUG = True
+print 'GPIO daemon starting'
 
 MQTT_TOPIC_IN = "/Gartenwasser/#"
 MQTT_TOPIC = "/Gartenwasser"
 MQTT_QOS = 0
 
-MONITOR_REFRESH = "/Gartenwasser/refersh"
+MONITOR_REFRESH = "/Gartenwasser/refresh"
 
 GPIO_OUTPUT_PINS = []
 MONITOR_PINS = []
@@ -67,9 +67,10 @@ def cleanup(signum, frame):
     """
     # Cleanup  modules
     MQTT.cleanup()
-    lcd.stop()
+    GPIO.cleanup()
 
     # Exit from application
+    print "GPIO daemon stopped"
     sys.exit(signum)
 
 def init_gpio():
@@ -88,6 +89,7 @@ def loop():
     """
     The main loop in which we mow the lawn.
     """
+    print 'GPIO daemon started'
     while True:
         for PIN in PINS:
             index = [y[0] for y in PINS].index(PIN[0])
@@ -97,14 +99,20 @@ def loop():
             if newstate != oldstate:
                 mqttc.publish(MQTT_TOPIC_OUT % pin, payload=newstate, qos=MQTT_QOS, retain=MQTT_RETAIN)
                 PINS[index][1] = newstate
-
         time.sleep(.8)
+
+
+# Use the signal module to handle signals
+for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
+    signal.signal(sig, cleanup)
 
 # Initialise our libraries
 MQTT.init()
+print 'MQTT initiated'
 MQTT.mqttc.on_message = on_message
 MQTT.mqttc.subscribe(MQTT_TOPIC_IN, qos=MQTT_QOS)
 init_gpio()
+print 'GPIO initiated'
 
 # start main procedure
 loop()

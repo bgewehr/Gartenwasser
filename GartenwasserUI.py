@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 __author__ = "Bernd Gewehr"
 
@@ -11,10 +11,10 @@ import sys
 import lib_mqtt as MQTT
 from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
-sys.sterr = sys.stdout
+#sys.sterr = sys.stdout
 
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 MQTT_TOPIC_IN = "/Gartenwasser/#"
 MQTT_TOPIC = "/Gartenwasser"
@@ -30,6 +30,8 @@ SWITCHPOS = ['off ', 'on ']
 #The DISPLAYTYPE Variable is modified by the 5th button of the keypad
 #It decides which data to show: state, flow, consumption60min
 DISPLAYTYPE = 0
+
+print 'LCD daemon starting'
 
 def output():
     if DISPLAYTYPE == 0:
@@ -122,6 +124,7 @@ def cleanup(signum, frame):
     lcd.stop()
 
     # Exit from application
+    print "LCD daemon stopped"
     sys.exit(signum)
 
 
@@ -129,6 +132,7 @@ def loop():
     """
     The main loop in which we mow the lawn.
     """
+    print 'LCD daemon startet'
     global DISPLAYTYPE
     while True:
         time.sleep(0.08)
@@ -151,8 +155,6 @@ def loop():
                 if DEBUG: print DISPLAYTYPE
                 break
 
-
-
 # Use the signal module to handle signals
 for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
     signal.signal(sig, cleanup)
@@ -161,30 +163,25 @@ for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
 lcd = Adafruit_CharLCDPlate()
 lcd.backlight(True)
 
-MQTT.init()
-MQTT.mqttc.on_message = on_message
-MQTT.mqttc.subscribe(MQTT_TOPIC_IN, qos=MQTT_QOS)
-
 # Clear display and show greeting, pause 1 sec
 lcd.clear()
 lcd.message("Gartenwasser\nstartet...")
 time.sleep(1)
-output()
 
-# Cycle through backlight colors
-#col = (lcd.RED, lcd.YELLOW, lcd.GREEN, lcd.TEAL,
-#       lcd.BLUE, lcd.VIOLET, lcd.WHITE, lcd.OFF)
-#for c in col:
-#    lcd.ledRGB(c)
-#   sleep(.5)
+# Init MQTT connections
+MQTT.init()
+print 'MQTT initiated'
+MQTT.mqttc.on_message = on_message
+MQTT.mqttc.subscribe(MQTT_TOPIC_IN, qos=MQTT_QOS)
 
 # assign GPIO & Status index of VALVA_STATUS
-
 btn = ((lcd.LEFT, 29, 0),
        (lcd.UP, 31, 1),
        (lcd.DOWN, 33, 2),
        (lcd.RIGHT, 35, 3),
        (lcd.SELECT, 0, 4))
 
+# Start output of values
+output()
 # start main procedure
 loop()
