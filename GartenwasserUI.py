@@ -11,11 +11,11 @@ import sys
 import lib_mqtt as MQTT
 from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
-#sys.sterr = sys.stdout
-
+# the global debug variable, set true for console output
 DEBUG = False
 #DEBUG = True
 
+# the MQTT topics and qos setting
 MQTT_TOPIC_IN = "/Gartenwasser/#"
 MQTT_TOPIC = "/Gartenwasser"
 MQTT_QOS = 0
@@ -24,9 +24,17 @@ MQTT_QOS = 0
 # the flow and the consumption
 # It has five datasets because our keypad has five switches, makes it easier to code
 VALVE_STATE = [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0]]
+
+# the units of the displaytype state, flow and consumption
 UNIT = ['', 'l/h', 'l ']
+
+# the text expression fpr the switchvalues 0 and 1
 SWITCHPOS = ['off ', 'on ']
+
+# the time the display backlight will stay on after each switching event
 DISPLAYTIME = 50
+
+# the countdown variable for the display backlight
 DISPLAYON = DISPLAYTIME
 
 #The DISPLAYTYPE Variable is modified by the 5th button of the keypad
@@ -65,6 +73,7 @@ def on_message(mosq, obj, msg):
     """
     Handle incoming messages
     """
+    global DISPLAYON
     topicparts = msg.topic.split("/")
     
     if DEBUG:
@@ -92,6 +101,8 @@ def on_message(mosq, obj, msg):
         if pin == 35:
             VALVE_STATE[3][0] = value
         lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
+        lcd.backlight(True)
+        DISPLAYON = DISPLAYTIME
 
     if topicparts[2] == "flow":
         if pin == 29:
