@@ -7,11 +7,10 @@
 # and constants are based on code from lrvick and LiquidCrystal.
 # lrvic - https://github.com/lrvick/raspi-hd44780/blob/master/hd44780.py
 # LiquidCrystal - https://github.com/arduino/Arduino/blob/master/libraries/LiquidCrystal/LiquidCrystal.cpp
-# code optimized by prisme60 - https://github.com/prisme60/LCD-RGB-Keypad-For-RPi
 
 from Adafruit_I2C import Adafruit_I2C
 from time import sleep
-
+import atexit
 
 class Adafruit_CharLCDPlate(Adafruit_I2C):
 
@@ -38,11 +37,10 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
     RED                     = 0x01
     GREEN                   = 0x02
     BLUE                    = 0x04
-    YELLOW                  = RED + GREEN
-    TEAL                    = GREEN + BLUE
-    VIOLET                  = RED + BLUE
-    WHITE                   = RED + GREEN + BLUE
-    ON                      = RED + GREEN + BLUE
+    YELLOW                  = RED | GREEN 
+    TEAL                    = GREEN | BLUE 
+    VIOLET                  = RED | BLUE  
+    WHITE                   = RED | GREEN | BLUE
 
     # LCD Commands
     LCD_CLEARDISPLAY        = 0x01
@@ -53,8 +51,6 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
     LCD_FUNCTIONSET         = 0x20
     LCD_SETCGRAMADDR        = 0x40
     LCD_SETDDRAMADDR        = 0x80
-    LCD_BACKLIGHTON         = 0x1F
-    LCD_BACKLIGHTOFF        = 0x3F
 
     # Flags for display on/off control
     LCD_DISPLAYON           = 0x04
@@ -87,7 +83,7 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
     # ----------------------------------------------------------------------
     # Constructor
 
-    def __init__(self, busnum=-1, addr=0x20, debug=False, backlight=ON):
+    def __init__(self, busnum=-1, addr=0x20, debug=False, backlight=True):
 
         self.i2c = Adafruit_I2C(addr, busnum, debug)
 
@@ -96,9 +92,9 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
         self.porta, self.portb, self.ddrb = 0, 0, 0b00000010
 
         # Set initial backlight color.
-        c          = ~backlight
-        self.porta = (self.porta & 0b00111111) | ((c & 0b011) << 6)
-        self.portb = (self.portb & 0b11111110) | ((c & 0b100) >> 2)
+        c          = (1<<5) if backlight else 0
+        self.porta = (self.porta & 0b00111111) | (0b011 << 6) | c #modify by ArduinoKing
+        self.portb = (self.portb & 0b11111110) | (0b100 >> 2)  #modify by ArduinoKing
 
         # Set MCP23017 IOCON register to Bank 0 with sequential operation.
         # If chip is already set for Bank 0, this will just write to OLATB,
@@ -112,7 +108,7 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
         # sets up all the input pins, pull-ups, etc. for the Pi Plate.
         self.i2c.bus.write_i2c_block_data(
           self.i2c.address, 0, 
-          [ 0b00011111,   # IODIRA    R+G LEDs=outputs, buttons=inputs
+          [ 0b00011111,   # IODIRA    R+G LEDs=outputs, lcd backlight, buttons=inputs ,modify by ArduinoKing
             self.ddrb ,   # IODIRB    LCD D7=input, Blue LED=output
             0b00111111,   # IPOLA     Invert polarity on button inputs
             0b00000000,   # IPOLB
@@ -124,7 +120,7 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
             0b00000000,   # INTCONB
             0b00000000,   # IOCON
             0b00000000,   # IOCON
-            0b00111111,   # GPPUA     Enable pull-ups on buttons
+            0b00011111,   # GPPUA     Enable pull-ups on buttons ,modify by ArduinoKing
             0b00000000,   # GPPUB
             0b00000000,   # INTFA
             0b00000000,   # INTFB
@@ -132,8 +128,8 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
             0b00000000,   # INTCAPB
             self.porta,   # GPIOA
             self.portb,   # GPIOB
-            self.porta,   # OLATA
-            self.portb ]) # OLATB
+            self.porta,   # OLATA     0 on all outputs; side effect of
+            self.portb ]) # OLATB     turning on R+G+B backlight LEDs.
 
         # Switch to Bank 1 and disable sequential operation.
         # From this point forward, the register addresses do NOT match
@@ -160,7 +156,6 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
         self.write(self.LCD_ENTRYMODESET   | self.displaymode)
         self.write(self.LCD_DISPLAYCONTROL | self.displaycontrol)
         self.write(self.LCD_RETURNHOME)
-        self.write(self.LCD_BACKLIGHTON) # blue LED backlight ON
 
 
     # ----------------------------------------------------------------------
@@ -286,7 +281,7 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
     # Any code using this newer version of the library should
     # consider adding an atexit() handler that calls this.
     def stop(self):
-        self.porta = 0b11000000  # Turn off LEDs on the way out
+        self.porta = 0b11100000  # Turn off LEDs on the way out
         self.portb = 0b00000001
         sleep(0.0015)
         self.i2c.bus.write_byte_data(
@@ -441,23 +436,23 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
                 self.write(line, True)
 
 
-
-    def backlight(self, color):
-        if color == True:
-            self.write(self.LCD_BACKLIGHTON) # blue LED backlight ON
-        else:
-            self.write(self.LCD_BACKLIGHTOFF) # blue LED backlight OFF
-
+    def ledRGB(self, color):
         c          = ~color
-        self.porta = (self.porta & 0b00111111) | ((c & 0b011) << 6)
-        self.portb = (self.portb & 0b11111110) | ((c & 0b100) >> 2)
+        self.porta = (self.porta & 0b00111111) | ((c & 0b011) << 6)  #modify by ArduinoKing
+        self.portb = (self.portb & 0b11111110) | ((c & 0b100) >> 2)  #modify by ArduinoKing
+        
         # Has to be done as two writes because sequential operation is off.
         self.i2c.bus.write_byte_data(
           self.i2c.address, self.MCP23017_GPIOA, self.porta)
         self.i2c.bus.write_byte_data(
           self.i2c.address, self.MCP23017_GPIOB, self.portb)
 
+    def backlight(self, on):
+        c          = 0 if on else 1
+        self.porta = (self.porta & 0b11011111) | ((c & 0x1) << 5) # only write backlight led
 
+        self.i2c.bus.write_byte_data(
+          self.i2c.address, self.MCP23017_GPIOA, self.porta)
 
 
     # Read state of single button
@@ -476,40 +471,44 @@ class Adafruit_CharLCDPlate(Adafruit_I2C):
 if __name__ == '__main__':
 
     lcd = Adafruit_CharLCDPlate()
+    atexit.register(lcd.stop)
     lcd.begin(16, 2)
     lcd.clear()
-    lcd.message("Adafruit RGB LCD\nPlate w/Keypad!")
+    lcd.backlight(True)
+    lcd.message("LCD + RGB led\nPlate w/Keypad!")
     sleep(1)
 
     col = (('Red' , lcd.RED) , ('Yellow', lcd.YELLOW), ('Green' , lcd.GREEN),
            ('Teal', lcd.TEAL), ('Blue'  , lcd.BLUE)  , ('Violet', lcd.VIOLET),
-           ('Off' , lcd.OFF) , ('On'    , lcd.ON))
+           ('Off' , lcd.OFF) , ('White' , lcd.WHITE))
 
-    print "Cycle thru backlight colors"
+    print("Cycle thru backlight colors")
     for c in col:
-       print c[0]
+       print(c[0])
        lcd.clear()
        lcd.message(c[0])
-       lcd.backlight(c[1])
+       lcd.ledRGB(c[1])
        sleep(0.5)
 
-    btn = ((lcd.SELECT, 'Select', lcd.ON),
+    btn = ((lcd.SELECT, 'Select', lcd.OFF),
            (lcd.LEFT  , 'Left'  , lcd.RED),
            (lcd.UP    , 'Up'    , lcd.BLUE),
            (lcd.DOWN  , 'Down'  , lcd.GREEN),
            (lcd.RIGHT , 'Right' , lcd.VIOLET))
     
-    print "Try buttons on plate"
+    print("Try buttons on plate")
     lcd.clear()
     lcd.message("Try buttons")
     prev = -1
     while True:
+        sleep(0.1)
+        buttonState = lcd.buttons()
         for b in btn:
-            if lcd.buttonPressed(b[0]):
+            if (buttonState & (1 << b[0])) != 0:
                 if b is not prev:
-                    print b[1]
+                    print(b[1])
                     lcd.clear()
                     lcd.message(b[1])
-                    lcd.backlight(b[2])
+                    lcd.ledRGB(b[2])
                     prev = b
                 break

@@ -27,7 +27,7 @@ VALVE_STATE = [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0]]
 UNIT = ['', 'l/h', 'l ']
 SWITCHPOS = ['off ', 'on ']
 DISPLAYTIME = 50
-DISPLAYON = 0
+DISPLAYON = DISPLAYTIME
 
 #The DISPLAYTYPE Variable is modified by the 5th button of the keypad
 #It decides which data to show: state, flow, consumption60min
@@ -68,11 +68,12 @@ def on_message(mosq, obj, msg):
     topicparts = msg.topic.split("/")
     
     if DEBUG:
-       print msg.topic
+       print 'TOPIC : ' + msg.topic
+       print 'TOPICPARTS :'
        print topicparts
        for i in range(0,len(topicparts)):
            print i, topicparts[i]
-       print msg.payload
+       print 'PAYLOAD : ' + msg.payload
 	
     pin = int('0' + topicparts[len(topicparts) - 1])
 
@@ -90,6 +91,7 @@ def on_message(mosq, obj, msg):
             VALVE_STATE[2][0] = value
         if pin == 35:
             VALVE_STATE[3][0] = value
+        lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
 
     if topicparts[2] == "flow":
         if pin == 29:
@@ -142,7 +144,8 @@ def loop():
         if DISPLAYON > 0: 
             DISPLAYON = DISPLAYON -1
         else:
-            lcd.backlight(False)
+            if DISPLAYON == 0: lcd.backlight(False)
+            DISPLAYON = -1
         for b in btn:
             if (buttonState & (1 << b[0])) != 0:
                 if DEBUG: print 'Button pressed for GPIO ' + str(b[1])
@@ -160,7 +163,7 @@ def loop():
                     time.sleep(1)
                     output()
                 time.sleep(.5)
-                if DEBUG: print DISPLAYTYPE
+                if DEBUG: print 'DISPLAYTYPE = ' + str(DISPLAYTYPE)
                 break
 
 # Use the signal module to handle signals
@@ -170,7 +173,7 @@ for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
 # Initialise our libraries
 lcd = Adafruit_CharLCDPlate()
 lcd.backlight(True)
-DISPLAYON = DISPLAYTIME
+
 
 # Clear display and show greeting, pause 1 sec
 lcd.clear()
