@@ -26,6 +26,8 @@ MQTT_QOS = 0
 VALVE_STATE = [[0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0]]
 UNIT = ['', 'l/h', 'l ']
 SWITCHPOS = ['off ', 'on ']
+DISPLAYTIME = 50
+DISPLAYON = 0
 
 #The DISPLAYTYPE Variable is modified by the 5th button of the keypad
 #It decides which data to show: state, flow, consumption60min
@@ -133,13 +135,19 @@ def loop():
     The main loop in which we mow the lawn.
     """
     print 'LCD daemon startet'
-    global DISPLAYTYPE
+    global DISPLAYTYPE, DISPLAYON
     while True:
         time.sleep(0.08)
         buttonState = lcd.buttons()
+        if DISPLAYON > 0: 
+            DISPLAYON = DISPLAYON -1
+        else:
+            lcd.backlight(False)
         for b in btn:
             if (buttonState & (1 << b[0])) != 0:
                 if DEBUG: print 'Button pressed for GPIO ' + str(b[1])
+                DISPLAYON = DISPLAYTIME
+                lcd.backlight(True)
                 if b[1] > 0: 
                     MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1), qos=0, retain=True)
                 else:
@@ -162,6 +170,7 @@ for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
 # Initialise our libraries
 lcd = Adafruit_CharLCDPlate()
 lcd.backlight(True)
+DISPLAYON = DISPLAYTIME
 
 # Clear display and show greeting, pause 1 sec
 lcd.clear()
