@@ -102,7 +102,9 @@ def on_message(mosq, obj, msg):
         if pin == 35:
             VALVE_STATE[3][0] = value
         if DEBUG: print 'Setting RGB to color ' + str(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
+        time.sleep(.05)
         lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
+        time.sleep(.05)
         lcd.backlight(True)
         DISPLAYON = DISPLAYTIME
 
