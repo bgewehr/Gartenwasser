@@ -12,8 +12,8 @@ import lib_mqtt as MQTT
 from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
 # the global debug variable, set true for console output
-#DEBUG = False
-DEBUG = True
+DEBUG = False
+#DEBUG = True
 
 # the MQTT topics and qos setting
 MQTT_TOPIC_IN = "/Gartenwasser/#"
