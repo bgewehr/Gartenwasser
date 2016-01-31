@@ -12,8 +12,8 @@ import lib_mqtt as MQTT
 from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
 # the global debug variable, set true for console output
-DEBUG = False
-#DEBUG = True
+#DEBUG = False
+DEBUG = True
 
 # the MQTT topics and qos setting
 MQTT_TOPIC_IN = "/Gartenwasser/#"
@@ -77,21 +77,21 @@ def on_message(mosq, obj, msg):
     topicparts = msg.topic.split("/")
     
     if DEBUG:
-       print 'TOPIC : ' + msg.topic
-       print 'TOPICPARTS :'
-       print topicparts
-       for i in range(0,len(topicparts)):
-           print i, topicparts[i]
-       print 'PAYLOAD : ' + msg.payload
+       print 'Received: ' + msg.topic, msg.payload
+       #print 'TOPICPARTS :'
+       #print topicparts
+       #for i in range(0,len(topicparts)):
+       #    print i, topicparts[i]
 	
-    pin = int('0' + topicparts[len(topicparts) - 1])
+    pin = int(topicparts[len(topicparts) - 1])
 
     try:
         value = int(float(msg.payload))
     except ValueError:
-        value = 0
+        value = -1
 
     if topicparts[2] == "in":
+        if DEBUG: print "Message type 'in' for pin " + str(pin) + " with value " + str(value)  
         if pin == 29:
             VALVE_STATE[0][0] = value
         if pin == 31:
@@ -104,7 +104,8 @@ def on_message(mosq, obj, msg):
         lcd.backlight(True)
         DISPLAYON = DISPLAYTIME
 
-    if topicparts[2] == "flow":
+    elif topicparts[2] == "flow":
+        if DEBUG: print "Message type 'flow' for pin " + str(pin) + " with value " + str(value)  
         if pin == 29:
             VALVE_STATE[0][1] = value
         if pin == 31:
@@ -114,7 +115,8 @@ def on_message(mosq, obj, msg):
         if pin == 35:
             VALVE_STATE[3][1] = value
 
-    if topicparts[2] == "consumption":
+    elif topicparts[2] == "consumption":
+        if DEBUG: print "Message type 'consumption' for pin " + str(pin) + " with value " + str(value)  
         if pin == 29:
             VALVE_STATE[0][2] = value
         if pin == 31:
@@ -164,6 +166,7 @@ def loop():
                 lcd.backlight(True)
                 if b[1] > 0: 
                     MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1), qos=0, retain=True)
+                    print 'Sent ' + MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1)
                 else:
                     DISPLAYTYPE = DISPLAYTYPE + 1
                     if DISPLAYTYPE == 3: DISPLAYTYPE = 0

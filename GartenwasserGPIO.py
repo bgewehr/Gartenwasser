@@ -53,10 +53,11 @@ def on_message(mosq, obj, msg):
     if pin not in GPIO_OUTPUT_PINS:
         GPIO.setup(pin, GPIO.OUT, initial=GPIO.HIGH)
         GPIO_OUTPUT_PINS.append(pin)
-    if value == 1:
-        GPIO.output(pin, GPIO.LOW)
-    else:
-        GPIO.output(pin, GPIO.HIGH)
+    if topicparts[2] == 'in':
+        if value == 1:
+            GPIO.output(pin, GPIO.LOW)
+        else:
+            GPIO.output(pin, GPIO.HIGH)
 
 # End of MQTT callbacks
 
