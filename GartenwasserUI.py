@@ -88,6 +88,7 @@ def on_message(mosq, obj, msg):
     try:
         value = int(float(msg.payload))
     except ValueError:
+        if DEBUG: print 'Valueerror on ' + msg.topic, msg.payload
         value = -1
 
     if topicparts[2] == "in":
@@ -100,6 +101,7 @@ def on_message(mosq, obj, msg):
             VALVE_STATE[2][0] = value
         if pin == 35:
             VALVE_STATE[3][0] = value
+        if DEBUG: print 'Setting RGB to color ' + str(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
         lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
         lcd.backlight(True)
         DISPLAYON = DISPLAYTIME
