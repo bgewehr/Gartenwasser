@@ -9,7 +9,10 @@ import sys
 
 # import libraries
 import lib_mqtt as MQTT
-from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
+import MPR121 as MP121
+import lcddriver as lcd
+import MPR121 as MPR121
+
 
 # the global debug variable, set true for console output
 DEBUG = False
@@ -64,9 +67,11 @@ def output():
     else:
         state4 = str(VALVE_STATE[3][DISPLAYTYPE]) + UNIT[DISPLAYTYPE]
     state4 = state4.rjust(6)
-    Message = '1:' + state1 + '2:' + state2 + '\n3:' + state3 + '4:' + state4
+    Message0 = '1:' + state1 + '2:' + state2
+    Message1 = '3:' + state3 + '4:' + state4
     lcd.clear()
-    lcd.message(Message)
+    lcd.display_string(Message0,1)
+    lcd.display_string(Message1,2)
  
 
 def on_message(mosq, obj, msg):
@@ -103,9 +108,9 @@ def on_message(mosq, obj, msg):
             VALVE_STATE[3][0] = value
         if DEBUG: print 'Setting RGB to color ' + str(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
         time.sleep(.05)
-        lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
+        #lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
         time.sleep(.05)
-        lcd.backlight(True)
+        #lcd.backlight(True)
         DISPLAYON = DISPLAYTIME
 
     elif topicparts[2] == "flow":
@@ -154,20 +159,44 @@ def loop():
     The main loop in which we mow the lawn.
     """
     print 'LCD daemon startet'
+
+    last_touched = cap.touched()
+
     global DISPLAYTYPE, DISPLAYON
     while True:
         time.sleep(0.08)
-        buttonState = lcd.buttons()
+
+        current_touched = cap.touched()
+        # Check each pin's last and current state to see if it was pressed or released.
+        for i in range(12):
+            # Each pin is represented by a bit in the touched value.  A value of 1
+            # means the pin is being touched, and 0 means it is not being touched.
+            pin_bit = 1 << i
+            # First check if transitioned from not touched to touched.
+            if current_touched & pin_bit and not last_touched & pin_bit:
+                print '{0} touched!'.format(i)
+            # Next check if transitioned from touched to not touched.
+            if not current_touched & pin_bit and last_touched & pin_bit:
+                print '{0} released!'.format(i)
+        # Update last state and wait a short period before repeating.
+        last_touched = current_touched
+
+        buttonState = current_touched
         if DISPLAYON > 0: 
             DISPLAYON = DISPLAYON -1
         else:
-            if DISPLAYON == 0: lcd.backlight(False)
-            DISPLAYON = -1
+            if DISPLAYON == 0: 
+                if (VALVE_STATE[0] or VALVE_STATE[1] or VALVE_STATE[2] or VALVE_STATE[3]):
+                    DISPLAYON = DISPLAYTIME
+                else:
+                    lcd.backlight_off()
+                    DISPLAYON = -1
+
         for b in btn:
             if (buttonState & (1 << b[0])) != 0:
                 if DEBUG: print 'Button pressed for GPIO ' + str(b[1])
                 DISPLAYON = DISPLAYTIME
-                lcd.backlight(True)
+                #lcd.backlight(True)
                 if b[1] > 0: 
                     MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1), qos=0, retain=True)
                     print 'Sent ' + MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1)
@@ -175,9 +204,9 @@ def loop():
                     DISPLAYTYPE = DISPLAYTYPE + 1
                     if DISPLAYTYPE == 3: DISPLAYTYPE = 0
                     lcd.clear()
-                    if DISPLAYTYPE == 0: lcd.message("Display\nstate")
-                    if DISPLAYTYPE == 1: lcd.message("Display\nflow")
-                    if DISPLAYTYPE == 2: lcd.message("Display\nconsumption")
+                    if DISPLAYTYPE == 0: lcd.display_string("Display state",0)
+                    if DISPLAYTYPE == 1: lcd.display_string("Display flow",0)
+                    if DISPLAYTYPE == 2: lcd.display_string("Display consumption",0)
                     time.sleep(1)
                     output()
                 time.sleep(.5)
@@ -188,14 +217,24 @@ def loop():
 for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
     signal.signal(sig, cleanup)
 
-# Initialise our libraries
-lcd = Adafruit_CharLCDPlate()
-lcd.backlight(True)
+# Initialize the LCD
+lcd = lcd.lcd()
 
+# Create MPR121 instance.
+cap = MPR121.MPR121()
+
+#lcd.backlight(True)
+print 'Adafruit MPR121 Capacitive Touch Sensor started'
+
+# Initialize communication with MPR121 using default I2C bus of device, and
+# default I2C address (0x5A).  On BeagleBone Black will default to I2C bus 0.
+if not cap.begin():
+    print 'Error initializing MPR121.  Check your wiring!'
+    sys.exit(1)
 
 # Clear display and show greeting, pause 1 sec
 lcd.clear()
-lcd.message("Gartenwasser\nstartet...")
+lcd.display_string("Gartenwasser startet...",0)
 time.sleep(1)
 
 # Init MQTT connections
@@ -205,11 +244,11 @@ MQTT.mqttc.on_message = on_message
 MQTT.mqttc.subscribe(MQTT_TOPIC_IN, qos=MQTT_QOS)
 
 # assign GPIO & Status index of VALVA_STATUS
-btn = ((lcd.LEFT, 29, 0),
-       (lcd.UP, 31, 1),
-       (lcd.DOWN, 33, 2),
-       (lcd.RIGHT, 35, 3),
-       (lcd.SELECT, 0, 4))
+btn = ((11, 29, 0),
+       (10, 31, 1),
+       (9, 33, 2),
+       (8, 35, 3),
+       (7, 0, 4))
 
 # Start output of values
 output()
