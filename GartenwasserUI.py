@@ -186,7 +186,7 @@ def loop():
             DISPLAYON = DISPLAYON -1
         else:
             if DISPLAYON == 0: 
-                if (VALVE_STATE[0] or VALVE_STATE[1] or VALVE_STATE[2] or VALVE_STATE[3]):
+                if (VALVE_STATE[0][0] or VALVE_STATE[1][0] or VALVE_STATE[2][0] or VALVE_STATE[3][0]):
                     DISPLAYON = DISPLAYTIME
                 else:
                     lcd.backlight_off()
