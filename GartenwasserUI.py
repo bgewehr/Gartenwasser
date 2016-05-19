@@ -9,10 +9,10 @@ import sys
 
 # import libraries
 import lib_mqtt as MQTT
-import MPR121 as MP121
-import lcddriver as lcd
-import MPR121 as MPR121
 
+import Adafruit_MPR121.MPR121 as MPR121
+
+import PCF_CharLCD as LCD
 
 # the global debug variable, set true for console output
 DEBUG = False
@@ -69,9 +69,9 @@ def output():
     state4 = state4.rjust(6)
     Message0 = '1:' + state1 + '2:' + state2
     Message1 = '3:' + state3 + '4:' + state4
+
     lcd.clear()
-    lcd.display_string(Message0,1)
-    lcd.display_string(Message1,2)
+    lcd.message(Message0 + '\n' + Message1)
  
 
 def on_message(mosq, obj, msg):
@@ -108,9 +108,7 @@ def on_message(mosq, obj, msg):
             VALVE_STATE[3][0] = value
         if DEBUG: print 'Setting RGB to color ' + str(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
         time.sleep(.05)
-        #lcd.ledRGB(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
-        time.sleep(.05)
-        #lcd.backlight(True)
+        lcd.set_backlight(True)
         DISPLAYON = DISPLAYTIME
 
     elif topicparts[2] == "flow":
@@ -147,7 +145,7 @@ def cleanup(signum, frame):
     """
     # Cleanup  modules
     MQTT.cleanup()
-    lcd.stop()
+    lcd.clear()
 
     # Exit from application
     print "LCD daemon stopped"
@@ -189,14 +187,14 @@ def loop():
                 if (VALVE_STATE[0][0] or VALVE_STATE[1][0] or VALVE_STATE[2][0] or VALVE_STATE[3][0]):
                     DISPLAYON = DISPLAYTIME
                 else:
-                    lcd.backlight_off()
+                    lcd.set_backlight(False)
                     DISPLAYON = -1
 
         for b in btn:
             if (buttonState & (1 << b[0])) != 0:
                 if DEBUG: print 'Button pressed for GPIO ' + str(b[1])
                 DISPLAYON = DISPLAYTIME
-                #lcd.backlight(True)
+                lcd.set_backlight(True)
                 if b[1] > 0: 
                     MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1), qos=0, retain=True)
                     print 'Sent ' + MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1)
@@ -204,9 +202,9 @@ def loop():
                     DISPLAYTYPE = DISPLAYTYPE + 1
                     if DISPLAYTYPE == 3: DISPLAYTYPE = 0
                     lcd.clear()
-                    if DISPLAYTYPE == 0: lcd.display_string("Display state",0)
-                    if DISPLAYTYPE == 1: lcd.display_string("Display flow",0)
-                    if DISPLAYTYPE == 2: lcd.display_string("Display consumption",0)
+                    if DISPLAYTYPE == 0: lcd.message("Display state   ")
+                    if DISPLAYTYPE == 1: lcd.message("Display flow    ")
+                    if DISPLAYTYPE == 2: lcd.message("Display\nconsumption")
                     time.sleep(1)
                     output()
                 time.sleep(.5)
@@ -218,12 +216,18 @@ for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
     signal.signal(sig, cleanup)
 
 # Initialize the LCD
-lcd = lcd.lcd()
+lcd = LCD.PCF_CharLCD(0, address=0x27, busnum=1, cols=16, lines=2)
+#lcd = LCD.lcd(0x27,1,True,True)
+
+# Clear display and show greeting, pause 1 sec
+lcd.clear()
+lcd.set_backlight(True)
+lcd.message("Gartenwasse\nstartet...")
+time.sleep(1)
 
 # Create MPR121 instance.
 cap = MPR121.MPR121()
 
-#lcd.backlight(True)
 print 'Adafruit MPR121 Capacitive Touch Sensor started'
 
 # Initialize communication with MPR121 using default I2C bus of device, and
@@ -231,11 +235,6 @@ print 'Adafruit MPR121 Capacitive Touch Sensor started'
 if not cap.begin():
     print 'Error initializing MPR121.  Check your wiring!'
     sys.exit(1)
-
-# Clear display and show greeting, pause 1 sec
-lcd.clear()
-lcd.display_string("Gartenwasser startet...",0)
-time.sleep(1)
 
 # Init MQTT connections
 MQTT.init()
