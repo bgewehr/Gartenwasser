@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 __author__ = "Bernd Gewehr"
 
@@ -70,8 +70,10 @@ def output():
     Message0 = '1:' + state1 + '2:' + state2
     Message1 = '3:' + state3 + '4:' + state4
 
-    lcd.clear()
-    lcd.message(Message0 + '\n' + Message1)
+    lcd.set_cursor(0,0)
+    lcd.message(Message0)
+    lcd.set_cursor(0,1)
+    lcd.message(Message1)
  
 
 def on_message(mosq, obj, msg):
@@ -201,10 +203,10 @@ def loop():
                 else:
                     DISPLAYTYPE = DISPLAYTYPE + 1
                     if DISPLAYTYPE == 3: DISPLAYTYPE = 0
-                    lcd.clear()
+                    lcd.set_cursor(0,0)
                     if DISPLAYTYPE == 0: lcd.message("Display state   ")
                     if DISPLAYTYPE == 1: lcd.message("Display flow    ")
-                    if DISPLAYTYPE == 2: lcd.message("Display\nconsumption")
+                    if DISPLAYTYPE == 2: lcd.message("Display         \nconsumption     ")
                     time.sleep(1)
                     output()
                 time.sleep(.5)
@@ -222,7 +224,7 @@ lcd = LCD.PCF_CharLCD(0, address=0x27, busnum=1, cols=16, lines=2)
 # Clear display and show greeting, pause 1 sec
 lcd.clear()
 lcd.set_backlight(True)
-lcd.message("Gartenwasse\nstartet...")
+lcd.message("Gartenwasser\nstartet...")
 time.sleep(1)
 
 # Create MPR121 instance.
