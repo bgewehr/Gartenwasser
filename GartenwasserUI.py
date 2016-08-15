@@ -202,10 +202,10 @@ def loop():
                     DISPLAYTYPE = DISPLAYTYPE + 1
                     if DISPLAYTYPE == 3: DISPLAYTYPE = 0
                     lcd.set_cursor(0,0)
-                    if DISPLAYTYPE == 0: lcd.message("Display state   ")
-                    if DISPLAYTYPE == 1: lcd.message("Display flow    ")
+                    if DISPLAYTYPE == 0: lcd.message("Display         \nstate           ")
+                    if DISPLAYTYPE == 1: lcd.message("Display         \nflow            ")
                     if DISPLAYTYPE == 2: lcd.message("Display         \nconsumption     ")
-                    time.sleep(1)
+                    time.sleep(0.5)
                     output()
                 time.sleep(.5)
                 if DEBUG: print 'DISPLAYTYPE = ' + str(DISPLAYTYPE)
