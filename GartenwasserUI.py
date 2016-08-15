@@ -12,7 +12,7 @@ import lib_mqtt as MQTT
 
 import Adafruit_MPR121.MPR121 as MPR121
 
-import RPi_I2C_driver as LCD
+import PCF_CharLCD as LCD
 
 # the global debug variable, set true for console output
 DEBUG = False
@@ -70,8 +70,10 @@ def output():
     Message0 = '1:' + state1 + '2:' + state2
     Message1 = '3:' + state3 + '4:' + state4
 
-    lcd.lcd_display_string(Message0,1)
-    lcd.lcd_display_string(Message1,2)
+    lcd.set_cursor(0,0)
+    lcd.message(Message0)
+    lcd.set_cursor(0,1)
+    lcd.message(Message1)
  
 
 def on_message(mosq, obj, msg):
@@ -108,7 +110,7 @@ def on_message(mosq, obj, msg):
             VALVE_STATE[3][0] = value
         if DEBUG: print 'Setting RGB to color ' + str(VALVE_STATE[0][0] + VALVE_STATE[1][0] + VALVE_STATE[2][0] + VALVE_STATE[3][0] + 1)
         time.sleep(.05)
-        lcd.backlight(1)
+        lcd.set_backlight(True)
         DISPLAYON = DISPLAYTIME
 
     elif topicparts[2] == "flow":
@@ -143,7 +145,7 @@ def cleanup(signum, frame):
     """
     # Cleanup  modules
     MQTT.cleanup()
-    lcd.lcd_clear()
+    lcd.clear()
 
     # Exit from application
     print "LCD daemon stopped"
@@ -169,11 +171,11 @@ def loop():
             # means the pin is being touched, and 0 means it is not being touched.
             pin_bit = 1 << i
             # First check if transitioned from not touched to touched.
-            if current_touched & pin_bit and not last_touched & pin_bit:
-                print '{0} touched!'.format(i)
+            #if current_touched & pin_bit and not last_touched & pin_bit:
+            #    print '{0} touched!'.format(i)
             # Next check if transitioned from touched to not touched.
-            if not current_touched & pin_bit and last_touched & pin_bit:
-                print '{0} released!'.format(i)
+            #if not current_touched & pin_bit and last_touched & pin_bit:
+            #    print '{0} released!'.format(i)
         # Update last state and wait a short period before repeating.
         last_touched = current_touched
 
@@ -185,26 +187,26 @@ def loop():
                 if (VALVE_STATE[0][0] or VALVE_STATE[1][0] or VALVE_STATE[2][0] or VALVE_STATE[3][0]):
                     DISPLAYON = DISPLAYTIME
                 else:
-                    lcd.backlight(0)
+                    lcd.set_backlight(False)
                     DISPLAYON = -1
 
         for b in btn:
             if (buttonState & (1 << b[0])) != 0:
                 if DEBUG: print 'Button pressed for GPIO ' + str(b[1])
                 DISPLAYON = DISPLAYTIME
-                lcd.backlight(1)
+                lcd.set_backlight(True)
                 if b[1] > 0: 
                     MQTT.mqttc.publish(MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1), qos=0, retain=True)
-                    print 'Sent ' + MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1)
+                    if DEBUG: print 'Sent ' + MQTT_TOPIC + '/in/' + str(b[1]), abs(VALVE_STATE[b[2]][0]-1)
                 else:
                     DISPLAYTYPE = DISPLAYTYPE + 1
-                    lcd.lcd_clear()
                     if DISPLAYTYPE == 3: DISPLAYTYPE = 0
-                    if DISPLAYTYPE == 0: lcd.lcd_display_string("Display state   ",1)
-                    if DISPLAYTYPE == 1: lcd.lcd_display_string("Display flow    ",1)
-                    if DISPLAYTYPE == 2: lcd.lcd_display_string("Display         ",1)
-                    if DISPLAYTYPE == 2: lcd.lcd_display_string("consumption     ",2)
+                    lcd.set_cursor(0,0)
+                    if DISPLAYTYPE == 0: lcd.message("Display state   ")
+                    if DISPLAYTYPE == 1: lcd.message("Display flow    ")
+                    if DISPLAYTYPE == 2: lcd.message("Display         \nconsumption     ")
                     time.sleep(1)
+                    output()
                 time.sleep(.5)
                 if DEBUG: print 'DISPLAYTYPE = ' + str(DISPLAYTYPE)
                 break
@@ -214,15 +216,12 @@ for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP, signal.SIGQUIT]:
     signal.signal(sig, cleanup)
 
 # Initialize the LCD
-#lcd = LCD.PCF_CharLCD(0, address=0x27, busnum=1, cols=16, lines=2)
-#lcd = LCD.lcd(0x27,1,True,True)
-lcd = LCD.lcd()
+lcd = LCD.PCF_CharLCD(0, address=0x27, busnum=1, cols=16, lines=2)
 
 # Clear display and show greeting, pause 1 sec
-lcd.lcd_clear()
-lcd.backlight(1)
-lcd.lcd_display_string("Gartenwasser",1)
-lcd.lcd_display_string("startet...",2)
+lcd.clear()
+lcd.set_backlight(True)
+lcd.message("Gartenwasser\nstartet...")
 time.sleep(1)
 
 # Create MPR121 instance.
