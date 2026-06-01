@@ -88,7 +88,7 @@ def init_gpio():
 
 def loop():
     """
-    The main loop in which we mow the lawn.
+    The main loop.
     """
     print 'GPIO daemon started'
     while True:
